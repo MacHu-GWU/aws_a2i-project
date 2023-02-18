@@ -43,5 +43,16 @@ try:
         describe_human_loop,
         start_human_loop,
     )
+    from .tools import (
+        render_task_template,
+    )
+    from .tagging import (
+        to_tag_list,
+        to_tag_dict,
+    )
+    from .helper import (
+        sha256_of_bytes,
+        vprint,
+    )
 except ImportError:  # pragma: no cover
     pass
