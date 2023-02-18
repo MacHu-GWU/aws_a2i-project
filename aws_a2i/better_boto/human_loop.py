@@ -12,6 +12,7 @@ from .flow_definition import (
 )
 
 
+# --- Low level API
 def parse_team_name_from_private_team_arn(arn: str) -> str:
     """
     Example:
@@ -73,6 +74,7 @@ def describe_human_loop(
     )
 
 
+# --- High level API
 def start_human_loop(
     bsm: BotoSesManager,
     human_loop_name: str,

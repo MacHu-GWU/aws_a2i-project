@@ -5,14 +5,14 @@ import typing as T
 from boto_session_manager import BotoSesManager
 
 from ..tagging import to_tag_list
-from ..helper import sha256_of_bytes, vprint
+from ..helper import vprint
 from ..waiter import Waiter
 
 from .human_task_ui import (
     get_task_template_arn,
 )
 
-
+# --- Low level API
 def get_flow_definition_arn(
     aws_account_id: str,
     aws_region: str,
@@ -129,6 +129,7 @@ def delete_flow_definition(
     )
 
 
+# --- High level API
 def remove_flow_definition(
     bsm: BotoSesManager,
     flow_definition_name: str,
