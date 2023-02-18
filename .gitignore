@@ -3,6 +3,7 @@ aws_a2i_venv/
 aws_a2i.egg-info/
 aws_a2i-*/
 tmp/
+task-ui.html
 
 
 # Byte-compiled / optimized / DLL files
