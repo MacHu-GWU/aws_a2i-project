@@ -1,12 +1,12 @@
 
-.. image:: https://readthedocs.org/projects/aws_a2i/badge/?version=latest
+.. .. image:: https://readthedocs.org/projects/aws_a2i/badge/?version=latest
     :target: https://aws_a2i.readthedocs.io/index.html
     :alt: Documentation Status
 
-.. image:: https://github.com/MacHu-GWU/aws_a2i-project/workflows/CI/badge.svg
+.. .. image:: https://github.com/MacHu-GWU/aws_a2i-project/workflows/CI/badge.svg
     :target: https://github.com/MacHu-GWU/aws_a2i-project/actions?query=workflow:CI
 
-.. image:: https://codecov.io/gh/MacHu-GWU/aws_a2i-project/branch/main/graph/badge.svg
+.. .. image:: https://codecov.io/gh/MacHu-GWU/aws_a2i-project/branch/main/graph/badge.svg
     :target: https://codecov.io/gh/MacHu-GWU/aws_a2i-project
 
 .. image:: https://img.shields.io/pypi/v/aws_a2i.svg
@@ -24,13 +24,13 @@
 ------
 
 
-.. image:: https://img.shields.io/badge/Link-Document-blue.svg
+.. .. image:: https://img.shields.io/badge/Link-Document-blue.svg
     :target: https://aws_a2i.readthedocs.io/index.html
 
-.. image:: https://img.shields.io/badge/Link-API-blue.svg
+.. .. image:: https://img.shields.io/badge/Link-API-blue.svg
     :target: https://aws_a2i.readthedocs.io/py-modindex.html
 
-.. image:: https://img.shields.io/badge/Link-Source_Code-blue.svg
+.. .. image:: https://img.shields.io/badge/Link-Source_Code-blue.svg
     :target: https://aws_a2i.readthedocs.io/py-modindex.html
 
 .. image:: https://img.shields.io/badge/Link-Install-blue.svg
@@ -52,7 +52,7 @@
 Welcome to ``aws_a2i`` Documentation
 ==============================================================================
 
-Documentation for ``aws_a2i``.
+See `usage example <./examples/usage.ipynb>`_
 
 
 .. _install:
