@@ -10,8 +10,6 @@ from ..waiter import Waiter
 
 from .human_task_ui import (
     get_task_template_arn,
-    is_hil_task_template_exists,
-    deploy_hil_task_template,
 )
 
 
@@ -221,6 +219,7 @@ def deploy_flow_definition(
             )
         # no need to deploy
         if flag:
+            vprint("  No configuration changed, do nothing.", verbose)
             return
         # remove existing one first
         remove_flow_definition(
@@ -229,7 +228,7 @@ def deploy_flow_definition(
             wait=True,
             verbose=verbose,
         )
-
+    vprint("📋 Create Human review workflow definition ...", verbose)
     create_flow_definition(
         bsm,
         flow_definition_name=flow_definition_name,

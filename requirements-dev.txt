@@ -2,3 +2,8 @@
 pathlib_mate                            # autopep8 your code
 twine                                   # make distribution archive
 wheel                                   # make pre-compiled distribution package
+
+rich
+boto3
+python-box==6.1.0
+python-liquid==1.6.1

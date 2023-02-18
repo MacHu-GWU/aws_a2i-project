@@ -30,12 +30,25 @@ def get_task_template_console_url(
     )
 
 
+def parse_task_template_name_from_arn(arn: str) -> str:
+    """
+    Example:
+
+        >>> parse_task_template_name_from_arn("arn:aws:sagemaker:us-east-1:111122223333:human-task-ui/my-task-template")
+        'my-task-template'
+    """
+    return arn.split("/")[-1]
+
+
 def is_hil_task_template_exists(
     bsm: BotoSesManager,
     task_template_name: str,
 ) -> T.Tuple[bool, dict]:
     """
     ref: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/sagemaker.html#SageMaker.Client.describe_human_task_ui
+
+    :return: tuple of two item, first item is a boolean value, second value is
+        the response of ``describe_human_task_ui()``, you can call it task ui details.
     """
     try:
         response = bsm.sagemaker_client.describe_human_task_ui(
