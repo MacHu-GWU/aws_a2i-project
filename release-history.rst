@@ -15,6 +15,25 @@ Backlog
 **Miscellaneous**
 
 
+0.2.1 (2023-02-20)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+**Features and Improvements**
+
+- Add the following public APIs:
+    - ``aws_a2i.FlowDefinitionStatusEnum``
+    - ``aws_a2i.FlowDefinition``
+    - ``aws_a2i.HumanLoopStatusEnum``
+    - ``aws_a2i.HumanLoop``
+    - ``aws_a2i.get_human_loop_details``
+    - ``aws_a2i.stop_human_loop``
+    - ``aws_a2i.delete_human_loop``
+    - ``aws_a2i.list_human_loops``
+
+**Bugfixes**
+
+- Fix a bug that deploy human review workflow definition not happen when the s3 output is changed.
+
+
 0.1.1 (2023-02-17)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 **Features and Improvements**
