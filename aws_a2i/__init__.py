@@ -26,6 +26,8 @@ try:
         remove_hil_task_template,
     )
     from .better_boto.flow_definition import (
+        FlowDefinitionStatusEnum,
+        FlowDefinition,
         get_flow_definition_arn,
         get_flow_definition_console_url,
         parse_flow_definition_name_from_arn,
@@ -36,12 +38,18 @@ try:
         deploy_flow_definition,
     )
     from .better_boto.human_loop import (
+        HumanLoopStatusEnum,
+        HumanLoop,
         parse_team_name_from_private_team_arn,
         get_workspace_signin_url,
         get_hil_console_url,
         parse_hil_name_from_hil_arn,
         describe_human_loop,
         start_human_loop,
+        get_human_loop_details,
+        stop_human_loop,
+        delete_human_loop,
+        list_human_loops,
     )
     from .tools import (
         render_task_template,
