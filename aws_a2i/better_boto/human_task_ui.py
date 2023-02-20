@@ -2,6 +2,7 @@
 
 import typing as T
 
+from light_emoji import common as emojis
 from boto_session_manager import BotoSesManager
 
 from ..helper import sha256_of_bytes, vprint
@@ -101,7 +102,7 @@ def deploy_hil_task_template(
     """
     Deploy HIL task template. in smart way.
     """
-    vprint("📋 Deploy Human in Loop task template", verbose)
+    vprint(f"{emojis.deploy} Deploy Human in Loop task template", verbose)
     task_template_console_url = get_task_template_console_url(
         aws_region=bsm.aws_region,
         task_template_name=task_template_name,
@@ -133,7 +134,7 @@ def deploy_hil_task_template(
     else:
         create_human_task_ui(bsm, task_template_name, task_template_content, tags)
     vprint(
-        f"  ✅ Successfully deployed task ui template {task_template_name!r}", verbose
+        f"  {emojis.succeeded} Successfully deployed task ui template {task_template_name!r}", verbose
     )
 
 
@@ -142,7 +143,7 @@ def remove_hil_task_template(
     task_template_name: str,
     verbose: bool = True,
 ):
-    vprint("📋 Remove Human in Loop task template", verbose)
+    vprint(f"{emojis.delete} Remove Human in Loop task template", verbose)
     task_template_console_url = get_task_template_console_url(
         aws_region=bsm.aws_region,
         task_template_name=task_template_name,
@@ -159,4 +160,4 @@ def remove_hil_task_template(
         )
     else:
         vprint("  HIL task template doesn't exists, do nothing.", verbose)
-    vprint(f"  ✅ Successfully removed task ui template {task_template_name!r}", verbose)
+    vprint(f"  {emojis.succeeded} Successfully removed task ui template {task_template_name!r}", verbose)
