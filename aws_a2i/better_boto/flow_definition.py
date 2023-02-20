@@ -1,7 +1,11 @@
 # -*- coding: utf-8 -*-
 
 import typing as T
+import enum
+import dataclasses
+from datetime import datetime
 
+from light_emoji import common as emojis
 from boto_session_manager import BotoSesManager
 
 from ..tagging import to_tag_list
@@ -11,6 +15,76 @@ from ..waiter import Waiter
 from .human_task_ui import (
     get_task_template_arn,
 )
+
+
+# --- Data Model
+@dataclasses.dataclass
+class HumanLoopConfig:
+    work_team_arn: T.Optional[str] = dataclasses.field(default=None)
+    human_task_ui_arn: T.Optional[str] = dataclasses.field(default=None)
+    task_title: T.Optional[str] = dataclasses.field(default=None)
+    task_description: T.Optional[str] = dataclasses.field(default=None)
+    task_count: T.Optional[int] = dataclasses.field(default=None)
+    task_availability_lifetime_in_seconds: T.Optional[int] = dataclasses.field(
+        default=None
+    )
+    task_time_limit_in_seconds: T.Optional[int] = dataclasses.field(default=None)
+
+    @property
+    def human_task_ui_name(self) -> str:
+        return self.task_title
+
+
+@dataclasses.dataclass
+class OutputConfig:
+    s3_output_path: T.Optional[str] = dataclasses.field(default=None)
+    kms_key_id: T.Optional[str] = dataclasses.field(default=None)
+
+
+class FlowDefinitionStatusEnum(str, enum.Enum):
+    Initializing = "Initializing"
+    Active = "Active"
+    Failed = "Failed"
+    Deleting = "Deleting"
+
+
+@dataclasses.dataclass
+class FlowDefinition:
+    arn: T.Optional[str] = dataclasses.field(default=None)
+    name: T.Optional[str] = dataclasses.field(default=None)
+    status: T.Optional[str] = dataclasses.field(default=None)
+    creation_time: T.Optional[datetime] = dataclasses.field(default=None)
+    role_arn: T.Optional[str] = dataclasses.field(default=None)
+    human_loop_config: T.Optional[HumanLoopConfig] = dataclasses.field(default=None)
+    output_config: T.Optional[OutputConfig] = dataclasses.field(default=None)
+
+    @classmethod
+    def from_describe_flow_definition_response(cls, response: dict) -> "FlowDefinition":
+        return cls(
+            arn=response["FlowDefinitionArn"],
+            name=response["FlowDefinitionName"],
+            status=response["FlowDefinitionStatus"],
+            role_arn=response["RoleArn"],
+            creation_time=response["CreationTime"],
+            human_loop_config=HumanLoopConfig(
+                work_team_arn=response["HumanLoopConfig"]["WorkteamArn"],
+                human_task_ui_arn=response["HumanLoopConfig"]["HumanTaskUiArn"],
+                task_title=response["HumanLoopConfig"]["TaskTitle"],
+                task_description=response["HumanLoopConfig"]["TaskDescription"],
+                task_count=response["HumanLoopConfig"]["TaskCount"],
+                task_availability_lifetime_in_seconds=response["HumanLoopConfig"].get(
+                    "TaskAvailabilityLifetimeInSeconds"
+                ),
+                task_time_limit_in_seconds=response["HumanLoopConfig"].get(
+                    "TaskTimeLimitInSeconds"
+                ),
+            ),
+            output_config=OutputConfig(
+                s3_output_path=response["OutputConfig"]["S3OutputPath"],
+                kms_key_id=response["OutputConfig"].get("KmsKeyId"),
+            ),
+        )
+
 
 # --- Low level API
 def get_flow_definition_arn(
@@ -44,28 +118,6 @@ def parse_flow_definition_name_from_arn(arn: str) -> str:
     return arn.split("/")[-1]
 
 
-def is_flow_definition_exists(
-    bsm: BotoSesManager,
-    flow_definition_name: str,
-) -> T.Tuple[bool, dict]:
-    """
-    ref: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/sagemaker.html#SageMaker.Client.describe_flow_definition
-
-    :return: tuple of two item, first item is a boolean value, second value is
-        the response of ``describe_flow_definition()``, you can call it flow details.
-    """
-    try:
-        response = bsm.sagemaker_client.describe_flow_definition(
-            FlowDefinitionName=flow_definition_name
-        )
-        return True, response
-    except Exception as e:
-        if "does not exist" in str(e):
-            return False, {}
-        else:
-            raise e
-
-
 def create_flow_definition(
     bsm: BotoSesManager,
     flow_definition_name: str,
@@ -76,8 +128,8 @@ def create_flow_definition(
     task_template_name: str,
     task_description: str,
     task_count: int,
-    task_time_limit_in_seconds: T.Optional[int] = None,
     task_availability_life_time_in_seconds: T.Optional[int] = None,
+    task_time_limit_in_seconds: T.Optional[int] = None,
     tags: T.Optional[T.Dict[str, str]] = None,
 ) -> dict:
     """
@@ -130,14 +182,37 @@ def delete_flow_definition(
 
 
 # --- High level API
+def is_flow_definition_exists(
+    bsm: BotoSesManager,
+    flow_definition_name: str,
+) -> T.Tuple[bool, T.Optional[FlowDefinition]]:
+    """
+    ref: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/sagemaker.html#SageMaker.Client.describe_flow_definition
+
+    :return: tuple of two item, first item is a boolean value, second value is
+        the response of ``describe_flow_definition()``, you can call it flow details.
+    """
+    try:
+        response = bsm.sagemaker_client.describe_flow_definition(
+            FlowDefinitionName=flow_definition_name
+        )
+        return True, FlowDefinition.from_describe_flow_definition_response(response)
+    except Exception as e:
+        if "does not exist" in str(e):
+            return False, None
+        else:
+            raise e
+
+
 def remove_flow_definition(
     bsm: BotoSesManager,
     flow_definition_name: str,
     wait: bool = True,
+    wait_timeout: int = 30,
     verbose: bool = True,
 ):
     vprint(
-        "📋 Remove Human review workflow definition, it may takes 30 sec ~ 1 minute",
+        f"{emojis.delete} Remove Human review workflow definition, it may takes 30 sec ~ 1 minute",
         verbose,
     )
     flow_definition_console_url = get_flow_definition_console_url(
@@ -146,7 +221,7 @@ def remove_flow_definition(
     )
     vprint(f"  Preview at {flow_definition_console_url}", verbose)
 
-    is_flow_exists, flow_details = is_flow_definition_exists(
+    is_flow_exists, flow_def = is_flow_definition_exists(
         bsm=bsm,
         flow_definition_name=flow_definition_name,
     )
@@ -156,18 +231,18 @@ def remove_flow_definition(
             flow_definition_name=flow_definition_name,
         )
         if wait:
-            for _ in Waiter(delays=1, timeout=30, indent=2, verbose=verbose):
-                is_flow_exists, flow_details = is_flow_definition_exists(
+            for _ in Waiter(delays=1, timeout=wait_timeout, indent=2, verbose=verbose):
+                is_flow_exists, flow_def = is_flow_definition_exists(
                     bsm=bsm,
                     flow_definition_name=flow_definition_name,
                 )
                 if is_flow_exists is False:
                     break
-                if flow_details["FlowDefinitionStatus"] == "Failed":
+                if flow_def.status == "Failed":
                     raise Exception("Failed!")
     else:
         vprint("  Flow definition doesn't exists, do nothing.", verbose)
-    vprint(f"  ✅ Successfully delete flow definition {flow_definition_name!r}", verbose)
+    vprint(f"  {emojis.succeeded} Successfully delete flow definition {flow_definition_name!r}", verbose)
 
 
 def deploy_flow_definition(
@@ -180,17 +255,18 @@ def deploy_flow_definition(
     task_template_name: str,
     task_description: str,
     task_count: int,
-    task_time_limit_in_seconds: T.Optional[int] = None,
     task_availability_life_time_in_seconds: T.Optional[int] = None,
+    task_time_limit_in_seconds: T.Optional[int] = None,
     tags: T.Optional[T.Dict[str, str]] = None,
     wait: bool = True,
+    wait_timeout: int = 30,
     verbose: bool = True,
 ):
     """
     Deploy a Human in Loop workflow. in smart way.
     """
     vprint(
-        "📋 Deploy Human review workflow definition, it may takes 30 sec ~ 1 minute",
+        f"{emojis.deploy} Deploy Human review workflow definition, it may takes 30 sec ~ 1 minute",
         verbose,
     )
     flow_definition_console_url = get_flow_definition_console_url(
@@ -198,28 +274,37 @@ def deploy_flow_definition(
         flow_definition_name=flow_definition_name,
     )
     vprint(f"  preview at {flow_definition_console_url}", verbose)
-    is_flow_exists, flow_response = is_flow_definition_exists(
+    is_flow_exists, flow_def = is_flow_definition_exists(
         bsm=bsm,
         flow_definition_name=flow_definition_name,
     )
     if is_flow_exists:
-        flag = (
-            (flow_execution_role_arn == flow_response["RoleArn"])
-            and (task_template_name == flow_response["HumanLoopConfig"]["TaskTitle"])
-            and (task_count == flow_response["HumanLoopConfig"]["TaskCount"])
+        no_change_flag = (
+            (flow_execution_role_arn == flow_def.role_arn)
+            and (task_template_name == flow_def.human_loop_config.task_title)
+            and (task_description == flow_def.human_loop_config.task_description)
+            and (task_count == flow_def.human_loop_config.task_count)
         )
         if task_availability_life_time_in_seconds is not None:
-            flag = flag and (
+            no_change_flag = no_change_flag and (
                 task_availability_life_time_in_seconds
-                == flow_response["HumanLoopConfig"]["TaskAvailabilityLifetimeInSeconds"]
+                == flow_def.human_loop_config.task_availability_lifetime_in_seconds
             )
         if task_time_limit_in_seconds is not None:
-            flag = flag and (
+            no_change_flag = no_change_flag and (
                 task_time_limit_in_seconds
-                == flow_response["HumanLoopConfig"]["TaskTimeLimitInSeconds"]
+                == flow_def.human_loop_config.task_time_limit_in_seconds
             )
+        if output_key.endswith("/"):
+            output_key = output_key[:-1]
+        no_change_flag = no_change_flag and (
+            (
+                flow_def.output_config.s3_output_path
+                == f"s3://{output_bucket}/{output_key}"
+            )
+        )
         # no need to deploy
-        if flag:
+        if no_change_flag:
             vprint("  No configuration changed, do nothing.", verbose)
             return
         # remove existing one first
@@ -229,7 +314,7 @@ def deploy_flow_definition(
             wait=True,
             verbose=verbose,
         )
-    vprint("📋 Create Human review workflow definition ...", verbose)
+    vprint("Create Human review workflow definition ...", verbose)
     create_flow_definition(
         bsm,
         flow_definition_name=flow_definition_name,
@@ -240,24 +325,24 @@ def deploy_flow_definition(
         task_template_name=task_template_name,
         task_description=task_description,
         task_count=task_count,
-        task_time_limit_in_seconds=task_time_limit_in_seconds,
         task_availability_life_time_in_seconds=task_availability_life_time_in_seconds,
+        task_time_limit_in_seconds=task_time_limit_in_seconds,
         tags=tags,
     )
 
     if wait:
-        for _ in Waiter(delays=1, timeout=30, indent=2, verbose=verbose):
-            is_flow_exists, flow_details = is_flow_definition_exists(
+        for _ in Waiter(delays=1, timeout=wait_timeout, indent=2, verbose=verbose):
+            is_flow_exists, flow_def = is_flow_definition_exists(
                 bsm=bsm,
                 flow_definition_name=flow_definition_name,
             )
             if is_flow_exists is False:
                 break
-            if flow_details["FlowDefinitionStatus"] == "Active":
+            if flow_def.status == FlowDefinitionStatusEnum.Active.value:
                 break
-            if flow_details["FlowDefinitionStatus"] == "Failed":
+            if flow_def.status == FlowDefinitionStatusEnum.Failed.value:
                 raise Exception("Failed")
 
     vprint(
-        f"  ✅ Successfully deployed flow definition {flow_definition_name!r}", verbose
+        f"  {emojis.succeeded} Successfully deployed flow definition {flow_definition_name!r}", verbose
     )
