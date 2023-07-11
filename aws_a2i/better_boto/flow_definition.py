@@ -20,6 +20,10 @@ from .human_task_ui import (
 # --- Data Model
 @dataclasses.dataclass
 class HumanLoopConfig:
+    """
+    An attribute of :class:`FlowDefinition`.
+    """
+
     work_team_arn: T.Optional[str] = dataclasses.field(default=None)
     human_task_ui_arn: T.Optional[str] = dataclasses.field(default=None)
     task_title: T.Optional[str] = dataclasses.field(default=None)
@@ -37,11 +41,19 @@ class HumanLoopConfig:
 
 @dataclasses.dataclass
 class OutputConfig:
+    """
+    An attribute of :class:`FlowDefinition`.
+    """
+
     s3_output_path: T.Optional[str] = dataclasses.field(default=None)
     kms_key_id: T.Optional[str] = dataclasses.field(default=None)
 
 
 class FlowDefinitionStatusEnum(str, enum.Enum):
+    """
+    human review workflow definition status enumeration.
+    """
+
     Initializing = "Initializing"
     Active = "Active"
     Failed = "Failed"
@@ -50,6 +62,12 @@ class FlowDefinitionStatusEnum(str, enum.Enum):
 
 @dataclasses.dataclass
 class FlowDefinition:
+    """
+    The data model of a human review workflow definition.
+
+    :param data: the raw data from the ``describe_flow_definition`` api response.
+    """
+
     arn: T.Optional[str] = dataclasses.field(default=None)
     name: T.Optional[str] = dataclasses.field(default=None)
     status: T.Optional[str] = dataclasses.field(default=None)
@@ -57,9 +75,15 @@ class FlowDefinition:
     role_arn: T.Optional[str] = dataclasses.field(default=None)
     human_loop_config: T.Optional[HumanLoopConfig] = dataclasses.field(default=None)
     output_config: T.Optional[OutputConfig] = dataclasses.field(default=None)
+    data: T.Optional[dict] = dataclasses.field(default=None)
 
     @classmethod
     def from_describe_flow_definition_response(cls, response: dict) -> "FlowDefinition":
+        """
+        Reference:
+
+        - https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/sagemaker/client/describe_flow_definition.html
+        """
         return cls(
             arn=response["FlowDefinitionArn"],
             name=response["FlowDefinitionName"],
@@ -83,6 +107,7 @@ class FlowDefinition:
                 s3_output_path=response["OutputConfig"]["S3OutputPath"],
                 kms_key_id=response["OutputConfig"].get("KmsKeyId"),
             ),
+            data=response,
         )
 
 
@@ -103,8 +128,9 @@ def get_flow_definition_console_url(
     flow_definition_name: str,
 ) -> str:
     return (
-        f"https://console.aws.amazon.com/a2i/home?region={aws_region}#"
-        f"/human-review-workflows/{flow_definition_name}"
+        f"https://{aws_region}.console.aws.amazon.com/sagemaker"
+        f"/groundtruth?region={aws_region}#"
+        f"/a2i/human-review-workflows/{flow_definition_name}"
     )
 
 
@@ -133,14 +159,16 @@ def create_flow_definition(
     tags: T.Optional[T.Dict[str, str]] = None,
 ) -> dict:
     """
-    ref: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/sagemaker.html#SageMaker.Client.create_flow_definition
+    Reference:
+
+    - https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/sagemaker.html#SageMaker.Client.create_flow_definition
     """
     task_template_arn = get_task_template_arn(
         aws_account_id=bsm.aws_account_id,
         aws_region=bsm.aws_region,
         task_template_name=task_template_name,
     )
-    if output_key.endswith("/"):
+    if output_key.endswith("/"):  # aws will treat this as a folder
         output_key = output_key[:-1]
     human_loop_config = {
         "WorkteamArn": labeling_team_arn,
@@ -174,7 +202,9 @@ def delete_flow_definition(
     flow_definition_name: str,
 ):
     """
-    ref: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/sagemaker.html#SageMaker.Client.delete_flow_definition
+    Reference:
+
+    - https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/sagemaker.html#SageMaker.Client.delete_flow_definition
     """
     return bsm.sagemaker_client.delete_flow_definition(
         FlowDefinitionName=flow_definition_name
@@ -187,7 +217,9 @@ def is_flow_definition_exists(
     flow_definition_name: str,
 ) -> T.Tuple[bool, T.Optional[FlowDefinition]]:
     """
-    ref: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/sagemaker.html#SageMaker.Client.describe_flow_definition
+    Reference:
+
+    - https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/sagemaker.html#SageMaker.Client.describe_flow_definition
 
     :return: tuple of two item, first item is a boolean value, second value is
         the response of ``describe_flow_definition()``, you can call it flow details.
@@ -211,6 +243,9 @@ def remove_flow_definition(
     wait_timeout: int = 30,
     verbose: bool = True,
 ):
+    """
+    High level api to remove a human review workflow definition.
+    """
     vprint(
         f"{emojis.delete} Remove Human review workflow definition, it may takes 30 sec ~ 1 minute",
         verbose,
@@ -242,7 +277,10 @@ def remove_flow_definition(
                     raise Exception("Failed!")
     else:
         vprint("  Flow definition doesn't exists, do nothing.", verbose)
-    vprint(f"  {emojis.succeeded} Successfully delete flow definition {flow_definition_name!r}", verbose)
+    vprint(
+        f"  {emojis.succeeded} Successfully delete flow definition {flow_definition_name!r}",
+        verbose,
+    )
 
 
 def deploy_flow_definition(
@@ -259,11 +297,12 @@ def deploy_flow_definition(
     task_time_limit_in_seconds: T.Optional[int] = None,
     tags: T.Optional[T.Dict[str, str]] = None,
     wait: bool = True,
+    wait_delay: int = 3,
     wait_timeout: int = 30,
     verbose: bool = True,
 ):
     """
-    Deploy a Human in Loop workflow. in smart way.
+    High level api to deploy a Human in Loop workflow, smartly.
     """
     vprint(
         f"{emojis.deploy} Deploy Human review workflow definition, it may takes 30 sec ~ 1 minute",
@@ -331,7 +370,7 @@ def deploy_flow_definition(
     )
 
     if wait:
-        for _ in Waiter(delays=1, timeout=wait_timeout, indent=2, verbose=verbose):
+        for _ in Waiter(delays=wait_delay, timeout=wait_timeout, indent=2, verbose=verbose):
             is_flow_exists, flow_def = is_flow_definition_exists(
                 bsm=bsm,
                 flow_definition_name=flow_definition_name,
@@ -344,5 +383,6 @@ def deploy_flow_definition(
                 raise Exception("Failed")
 
     vprint(
-        f"  {emojis.succeeded} Successfully deployed flow definition {flow_definition_name!r}", verbose
+        f"  {emojis.succeeded} Successfully deployed flow definition {flow_definition_name!r}",
+        verbose,
     )

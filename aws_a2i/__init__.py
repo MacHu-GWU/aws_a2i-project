@@ -62,5 +62,5 @@ try:
         sha256_of_bytes,
         vprint,
     )
-except ImportError:  # pragma: no cover
-    pass
+except ImportError as e:  # pragma: no cover
+    print(e)

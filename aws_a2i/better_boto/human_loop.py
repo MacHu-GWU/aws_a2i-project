@@ -18,6 +18,9 @@ from .flow_definition import (
 
 # --- Data Model
 class HumanLoopStatusEnum(str, enum.Enum):
+    """
+    Human loop status enumeration
+    """
     InProgress = "InProgress"
     Failed = "Failed"
     Completed = "Completed"
@@ -27,6 +30,11 @@ class HumanLoopStatusEnum(str, enum.Enum):
 
 @dataclasses.dataclass
 class HumanLoop:
+    """
+    The data model of a human loop.
+
+    :param data: the raw data from the ``describe_human_loop`` api response.
+    """
     creation_time: T.Optional[datetime] = dataclasses.field(default=None)
     failure_reason: T.Optional[str] = dataclasses.field(default=None)
     failure_code: T.Optional[str] = dataclasses.field(default=None)
@@ -35,6 +43,7 @@ class HumanLoop:
     human_loop_arn: T.Optional[str] = dataclasses.field(default=None)
     flow_definition_arn: T.Optional[str] = dataclasses.field(default=None)
     human_loop_output_s3uri: T.Optional[str] = dataclasses.field(default=None)
+    data: T.Optional[dict] = dataclasses.field(default=None)
 
     def get_details(self, bsm: BotoSesManager) -> "HumanLoop":
         """
@@ -97,9 +106,9 @@ def get_hil_console_url(
     hil_name: str,
 ) -> str:
     return (
-        f"https://{aws_region}.console.aws.amazon.com/a2i/home?"
-        f"region={aws_region}#/human-review-workflows/"
-        f"{flow_definition_name}/human-loops/{hil_name}"
+        f"https://{aws_region}.console.aws.amazon.com/sagemaker"
+        f"/groundtruth?region={aws_region}#/a2i/human-review-workflows"
+        f"/{flow_definition_name}/human-loops/{hil_name}"
     )
 
 
@@ -118,7 +127,9 @@ def describe_human_loop(
     human_loop_name: str,
 ) -> dict:
     """
-    ref: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/sagemaker-a2i-runtime.html#AugmentedAIRuntime.Client.describe_human_loop
+    Reference:
+
+    - https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/sagemaker-a2i-runtime.html#AugmentedAIRuntime.Client.describe_human_loop
     """
     return bsm.sagemaker_a2i_runtime_client.describe_human_loop(
         HumanLoopName=human_loop_name,
@@ -130,7 +141,9 @@ def stop_human_loop(
     human_loop_name: str,
 ):
     """
-    ref: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/sagemaker-a2i-runtime.html#AugmentedAIRuntime.Client.stop_human_loop
+    Reference:
+
+    - https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/sagemaker-a2i-runtime.html#AugmentedAIRuntime.Client.stop_human_loop
     """
     return bsm.sagemaker_a2i_runtime_client.stop_human_loop(
         HumanLoopName=human_loop_name,
@@ -142,7 +155,9 @@ def delete_human_loop(
     human_loop_name: str,
 ):
     """
-    ref: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/sagemaker-a2i-runtime.html#AugmentedAIRuntime.Client.delete_human_loop
+    Reference:
+
+    - https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/sagemaker-a2i-runtime.html#AugmentedAIRuntime.Client.delete_human_loop
     """
     return bsm.sagemaker_a2i_runtime_client.delete_human_loop(
         HumanLoopName=human_loop_name,
@@ -159,7 +174,9 @@ def start_human_loop(
     verbose: bool = True,
 ) -> str:
     """
-    ref: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/sagemaker-a2i-runtime.html#AugmentedAIRuntime.Client.start_human_loop
+    Reference:
+
+    - https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/sagemaker-a2i-runtime.html#AugmentedAIRuntime.Client.start_human_loop
 
     :return: the human in loop task ARN.
     """
@@ -209,6 +226,7 @@ def get_human_loop_details(
         human_loop_arn=response["HumanLoopArn"],
         flow_definition_arn=response["FlowDefinitionArn"],
         human_loop_output_s3uri=response["HumanLoopOutput"]["OutputS3Uri"],
+        data=response,
     )
 
 
@@ -269,7 +287,9 @@ def list_human_loops(
     List human loops. You can then call :meth:`HumanLoop.get_details()` method
     to fetch more details.
 
-    ref: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/sagemaker-a2i-runtime.html#AugmentedAIRuntime.Client.list_human_loops
+    Reference:
+
+    - https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/sagemaker-a2i-runtime.html#AugmentedAIRuntime.Client.list_human_loops
     """
     return HumanLoopIterProxy(
         iterable=_list_human_loops(

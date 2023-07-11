@@ -26,8 +26,9 @@ def get_task_template_console_url(
     task_template_name: str,
 ) -> str:
     return (
-        f"https://console.aws.amazon.com/a2i/home?region={aws_region}#"
-        f"/worker-task-templates/{task_template_name}"
+        f"https://{aws_region}.console.aws.amazon.com/sagemaker"
+        f"/groundtruth?region={aws_region}#/a2i/worker-task-templates"
+        f"/{task_template_name}"
     )
 
 
@@ -46,7 +47,9 @@ def is_hil_task_template_exists(
     task_template_name: str,
 ) -> T.Tuple[bool, dict]:
     """
-    ref: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/sagemaker.html#SageMaker.Client.describe_human_task_ui
+    Reference:
+
+    - https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/sagemaker.html#SageMaker.Client.describe_human_task_ui
 
     :return: tuple of two item, first item is a boolean value, second value is
         the response of ``describe_human_task_ui()``, you can call it task ui details.
@@ -86,7 +89,9 @@ def delete_human_task_ui(
     task_template_name: str,
 ):
     """
-    ref: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/sagemaker.html#SageMaker.Client.delete_human_task_ui
+    Reference:
+
+    - https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/sagemaker.html#SageMaker.Client.delete_human_task_ui
     """
     return bsm.sagemaker_client.delete_human_task_ui(HumanTaskUiName=task_template_name)
 
@@ -98,9 +103,12 @@ def deploy_hil_task_template(
     task_template_content: str,
     tags: T.Optional[T.Dict[str, str]] = None,
     verbose: bool = True,
-):
+) -> T.Optional[dict]:
     """
-    Deploy HIL task template. in smart way.
+    Deploy HIL task template, smartly.
+
+    :return: if deployment happens, then return the response of ``create_human_task_ui()``,
+        otherwise return ``None``.
     """
     vprint(f"{emojis.deploy} Deploy Human in Loop task template", verbose)
     task_template_console_url = get_task_template_console_url(
@@ -119,30 +127,39 @@ def deploy_hil_task_template(
                 "  a HIL task template with the same content already exists, do nothing.",
                 verbose,
             )
-            return
+            return None
         else:
             delete_human_task_ui(
                 bsm=bsm,
                 task_template_name=task_template_name,
             )
-            create_human_task_ui(
+            response = create_human_task_ui(
                 bsm=bsm,
                 task_template_name=task_template_name,
                 task_template_content=task_template_content,
                 tags=tags,
             )
     else:
-        create_human_task_ui(bsm, task_template_name, task_template_content, tags)
+        response = create_human_task_ui(
+            bsm, task_template_name, task_template_content, tags
+        )
     vprint(
-        f"  {emojis.succeeded} Successfully deployed task ui template {task_template_name!r}", verbose
+        f"  {emojis.succeeded} Successfully deployed task ui template {task_template_name!r}",
+        verbose,
     )
+    return response
 
 
 def remove_hil_task_template(
     bsm: BotoSesManager,
     task_template_name: str,
     verbose: bool = True,
-):
+) -> bool:
+    """
+    Remove HIL task template, smartly.
+
+    :return: a boolean flag indicating whether the delete operation happens.
+    """
     vprint(f"{emojis.delete} Remove Human in Loop task template", verbose)
     task_template_console_url = get_task_template_console_url(
         aws_region=bsm.aws_region,
@@ -160,4 +177,9 @@ def remove_hil_task_template(
         )
     else:
         vprint("  HIL task template doesn't exists, do nothing.", verbose)
-    vprint(f"  {emojis.succeeded} Successfully removed task ui template {task_template_name!r}", verbose)
+
+    vprint(
+        f"  {emojis.succeeded} Successfully removed task ui template {task_template_name!r}",
+        verbose,
+    )
+    return not flag
