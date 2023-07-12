@@ -7,7 +7,6 @@ from boto_session_manager import BotoSesManager
 
 import aws_a2i.api as aws_a2i
 
-# ------------------------------------------------------------------------------
 bsm = BotoSesManager(profile_name="awshsh_app_dev_us_east_1")
 
 # dir_here = Path(os.getcwd()).absolute() # for jupyter notebook
@@ -18,22 +17,26 @@ path_task_template = dir_here.parent.joinpath("task-ui.liquid")
 play = aws_a2i.Play(
     aws_account_id=bsm.aws_account_id,
     aws_region=bsm.aws_region,
+    # task UI template name
     task_template_name="aws-a2i-example",
     task_template_content=path_task_template.read_text(),
+    # Human Review Workflow name
     flow_definition_name="aws-a2i-example",
+    # The IAM role for Human Review Workflow, you have to create it yourself
     flow_execution_role_arn=f"arn:aws:iam::{bsm.aws_account_id}:role/all-services-admin-role",
+    # Where you store HIL output data
     output_bucket=f"{bsm.aws_account_id}-{bsm.aws_region}-data",
     output_key="projects/aws_a2i-project/hil-output/",
+    # the Ground Truth private team ARN
     private_team_arn=f"arn:aws:sagemaker:{bsm.aws_region}:{bsm.aws_account_id}:workteam/private-crowd/my-private-team",
 )
 
-
-def remove_hil_task_template():
-    play.remove_hil_task_template(bsm=bsm)
-
-
 def remove_flow_definition():
     play.remove_flow_definition(bsm=bsm)
+
+    
+def remove_hil_task_template():
+    play.remove_hil_task_template(bsm=bsm)
 
 
 def deploy_hil_task_template():
@@ -59,7 +62,7 @@ def print_flow_definition_details():
 
 def print_workspace_signin_url():
     workspace_signin_url = play.get_workspace_signin_url(bsm=bsm)
-    print(f"workspace_signin_url: {workspace_signin_url}")
+    print(f"Login to the workspace: {workspace_signin_url}")
 
 
 def start_human_loop():
@@ -101,8 +104,8 @@ def inspect_human_loops_details():
         break
 
 
-# remove_hil_task_template()
 # remove_flow_definition()
+# remove_hil_task_template()
 # deploy_hil_task_template()
 # deploy_flow_definition()
 # print_flow_definition_details()

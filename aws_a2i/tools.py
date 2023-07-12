@@ -15,7 +15,7 @@ except ImportError as e:
 
 
 def _warn_if_no_dependencies():
-    if HAS_DEPENDENCIES:
+    if HAS_DEPENDENCIES is False:
         raise ImportError(f"cannot import 'box' or 'liquid' package")
 
 
