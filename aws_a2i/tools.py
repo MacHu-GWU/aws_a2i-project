@@ -5,8 +5,18 @@ import sys
 import subprocess
 from pathlib import Path
 
-from box import Box
-from liquid import Template
+try:
+    from box import Box
+    from liquid import Template
+
+    HAS_DEPENDENCIES = True
+except ImportError as e:
+    HAS_DEPENDENCIES = False
+
+
+def _warn_if_no_dependencies():
+    if HAS_DEPENDENCIES:
+        raise ImportError(f"cannot import 'box' or 'liquid' package")
 
 
 def render_task_template(
@@ -15,6 +25,8 @@ def render_task_template(
     path_task_ui_html: T.Union[str, Path, T.Any],
     preview: bool = True,
 ):
+    _warn_if_no_dependencies()
+
     # read liquid template
     template = Template(task_template_content)
 

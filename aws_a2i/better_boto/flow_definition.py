@@ -110,6 +110,18 @@ class FlowDefinition:
             data=response,
         )
 
+    def is_initializing(self) -> bool:
+        return self.status == FlowDefinitionStatusEnum.Initializing.value
+
+    def is_active(self) -> bool:
+        return self.status == FlowDefinitionStatusEnum.Active.value
+
+    def is_failed(self) -> bool:
+        return self.status == FlowDefinitionStatusEnum.Failed.value
+
+    def is_deleting(self) -> bool:
+        return self.status == FlowDefinitionStatusEnum.Deleting.value
+
 
 # --- Low level API
 def get_flow_definition_arn(
@@ -272,6 +284,7 @@ def remove_flow_definition(
                     flow_definition_name=flow_definition_name,
                 )
                 if is_flow_exists is False:
+                    vprint("", verbose)
                     break
                 if flow_def.status == "Failed":
                     raise Exception("Failed!")
@@ -300,9 +313,12 @@ def deploy_flow_definition(
     wait_delay: int = 3,
     wait_timeout: int = 30,
     verbose: bool = True,
-):
+) -> T.Optional[dict]:
     """
-    High level api to deploy a Human in Loop workflow, smartly.
+    High level api to deploy a Human review workflow, smartly.
+
+    :return: if deployment happens, then return the response of ``create_flow_definition()``,
+        otherwise return ``None``.
     """
     vprint(
         f"{emojis.deploy} Deploy Human review workflow definition, it may takes 30 sec ~ 1 minute",
@@ -345,7 +361,7 @@ def deploy_flow_definition(
         # no need to deploy
         if no_change_flag:
             vprint("  No configuration changed, do nothing.", verbose)
-            return
+            return None
         # remove existing one first
         remove_flow_definition(
             bsm=bsm,
@@ -353,8 +369,9 @@ def deploy_flow_definition(
             wait=True,
             verbose=verbose,
         )
+
     vprint("Create Human review workflow definition ...", verbose)
-    create_flow_definition(
+    response = create_flow_definition(
         bsm,
         flow_definition_name=flow_definition_name,
         flow_execution_role_arn=flow_execution_role_arn,
@@ -370,19 +387,29 @@ def deploy_flow_definition(
     )
 
     if wait:
-        for _ in Waiter(delays=wait_delay, timeout=wait_timeout, indent=2, verbose=verbose):
+        for _ in Waiter(
+            delays=wait_delay, timeout=wait_timeout, indent=2, verbose=verbose
+        ):
             is_flow_exists, flow_def = is_flow_definition_exists(
                 bsm=bsm,
                 flow_definition_name=flow_definition_name,
             )
+            # create_flow_definition() may return before the flow definition
+            # is created
             if is_flow_exists is False:
+                continue
+
+            if flow_def.is_active():
+                vprint("", verbose)
                 break
-            if flow_def.status == FlowDefinitionStatusEnum.Active.value:
-                break
-            if flow_def.status == FlowDefinitionStatusEnum.Failed.value:
-                raise Exception("Failed")
+
+            if flow_def.is_failed():
+                raise Exception(
+                    f"Creating Human Review Workflow {flow_definition_name!r} Failed"
+                )
 
     vprint(
         f"  {emojis.succeeded} Successfully deployed flow definition {flow_definition_name!r}",
         verbose,
     )
+    return response

@@ -4,7 +4,7 @@ import typing as T
 import json
 import enum
 import dataclasses
-from datetime import datetime
+from datetime import datetime, timezone
 
 from light_emoji import common as emojis
 from iterproxy import IterProxy
@@ -17,10 +17,59 @@ from .flow_definition import (
 )
 
 # --- Data Model
+date_fmt = "%Y-%m-%dT%H:%M:%S.%fZ"
+
+
+@dataclasses.dataclass
+class HumanAnswer:
+    acceptanceTime: str
+    answerContent: dict
+    submissionTime: str
+    timeSpentInSeconds: float
+    workerId: str
+    workerMetadata: dict
+
+    @classmethod
+    def from_dict(cls, dct: dict):
+        return cls(**dct)
+
+    @property
+    def acceptance_datetime(self) -> datetime:
+        return datetime.strptime(self.acceptanceTime, date_fmt).replace(
+            tzinfo=timezone.utc
+        )
+
+    @property
+    def submission_datetime(self) -> datetime:
+        return datetime.strptime(self.submissionTime, date_fmt).replace(
+            tzinfo=timezone.utc
+        )
+
+
+@dataclasses.dataclass
+class HumanLoopOutput:
+    """
+    Human loop output data model.
+    """
+
+    flowDefinitionArn: str
+    humanAnswers: T.List[HumanAnswer]
+    humanLoopName: str
+    inputContent: dict
+
+    @classmethod
+    def from_dict(cls, dct: dict):
+        dct["humanAnswers"] = [
+            HumanAnswer.from_dict(dct) for dct in dct.get("humanAnswers", [])
+        ]
+        return cls(**dct)
+
+
 class HumanLoopStatusEnum(str, enum.Enum):
     """
     Human loop status enumeration
     """
+
     InProgress = "InProgress"
     Failed = "Failed"
     Completed = "Completed"
@@ -35,6 +84,7 @@ class HumanLoop:
 
     :param data: the raw data from the ``describe_human_loop`` api response.
     """
+
     creation_time: T.Optional[datetime] = dataclasses.field(default=None)
     failure_reason: T.Optional[str] = dataclasses.field(default=None)
     failure_code: T.Optional[str] = dataclasses.field(default=None)
@@ -69,7 +119,34 @@ class HumanLoop:
         self.human_loop_arn = human_loop.human_loop_arn
         self.flow_definition_arn = human_loop.flow_definition_arn
         self.human_loop_output_s3uri = human_loop.human_loop_output_s3uri
+        self.data = human_loop.data
         return self
+
+    def is_in_progress(self) -> bool:
+        return self.human_loop_status == HumanLoopStatusEnum.InProgress.value
+
+    def is_failed(self) -> bool:
+        return self.human_loop_status == HumanLoopStatusEnum.Failed.value
+
+    def is_completed(self) -> bool:
+        return self.human_loop_status == HumanLoopStatusEnum.Completed.value
+
+    def is_stopped(self) -> bool:
+        return self.human_loop_status == HumanLoopStatusEnum.Stopped.value
+
+    def is_stopping(self) -> bool:
+        return self.human_loop_status == HumanLoopStatusEnum.Stopping.value
+
+    def get_output(self, bsm: BotoSesManager) -> HumanLoopOutput:
+        parts = self.human_loop_output_s3uri.split("/", 3)
+        bucket = parts[2]
+        key = parts[3]
+        res = bsm.s3_client.get_object(
+            Bucket=bucket,
+            Key=key,
+        )
+        data = json.loads(res["Body"].read())
+        return HumanLoopOutput.from_dict(data)
 
 
 # --- Low level API
@@ -260,17 +337,22 @@ def _list_human_loops(
         PageSize=page_size,
     )
     response_iterator = paginator.paginate(**kwargs)
+    parts = flow_definition_arn.split(":")
+    aws_region = parts[3]
+    aws_account_id = parts[4]
     for response in response_iterator:
         for data in response["HumanLoopSummaries"]:
+            human_loop_name = data["HumanLoopName"]
             yield HumanLoop(
                 creation_time=data["CreationTime"],
                 failure_reason=data.get("FailureReason"),
                 failure_code=None,
                 human_loop_status=data["HumanLoopStatus"],
-                human_loop_name=data["HumanLoopName"],
-                human_loop_arn=None,
+                human_loop_name=human_loop_name,
+                human_loop_arn=f"arn:aws:sagemaker:{aws_region}:{aws_account_id}:human-loop/{human_loop_name}",
                 flow_definition_arn=data["FlowDefinitionArn"],
                 human_loop_output_s3uri=None,
+                data=data,
             )
 
 
